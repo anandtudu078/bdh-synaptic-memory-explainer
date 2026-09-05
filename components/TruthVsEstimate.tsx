@@ -11,6 +11,7 @@ import {
   REAL_KV_BYTES_PER_TOKEN,
   type Matrix,
 } from "@/lib/engine";
+import KvGrowthChart from "./KvGrowthChart";
 
 type Props = {
   matrix: Matrix;
@@ -171,6 +172,11 @@ export default function TruthVsEstimate({ matrix, count }: Props) {
             color="bg-fire"
             note={`${KV_UNITS_PER_TOKEN} units/token → ∞`}
           />
+        </div>
+
+        {/* live growth chart */}
+        <div className="mt-5 rounded-lg bg-surface-2 p-3">
+          <KvGrowthChart tokens={count} />
         </div>
 
         <div className="mt-4 rounded-lg bg-surface-2 p-3 text-[11px] text-muted leading-relaxed">
