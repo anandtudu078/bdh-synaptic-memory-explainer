@@ -26,6 +26,37 @@ import TruthVsEstimate from "./TruthVsEstimate";
 const CUE_TOKEN = "the"; // probe token for the recall panel
 const PLAY_MS = 750; // per-token playback interval
 
+// One-click demo scenarios: (η, λ) pairs that expose different trade-offs.
+const PRESETS: {
+  id: string;
+  label: string;
+  emoji: string;
+  description: string;
+  params: EngineParams;
+}[] = [
+  {
+    id: "goldfish",
+    label: "Goldfish",
+    emoji: "🐟",
+    description: "Fast write, fast fade — pure working memory",
+    params: { plasticityRate: 0.9, decayFactor: 0.82 },
+  },
+  {
+    id: "balanced",
+    label: "Balanced",
+    emoji: "⚖️",
+    description: "Default: moderate writing and retention",
+    params: { plasticityRate: 0.45, decayFactor: 0.92 },
+  },
+  {
+    id: "elephant",
+  label: "Elephant",
+    emoji: "🐘",
+    description: "Slow write, long retention — stale traces linger",
+    params: { plasticityRate: 0.3, decayFactor: 0.995 },
+  },
+];
+
 export default function SynapticLab() {
   const [params, setParams] = useState<EngineParams>({
     plasticityRate: 0.45,
@@ -73,8 +104,47 @@ export default function SynapticLab() {
 
   const newSpikes = count > 0 ? TOKEN_STREAM[count - 1].spikes : null;
 
+  // A preset is "active" when current params exactly match its (η, λ).
+  const activePresetId = PRESETS.find(
+    (p) =>
+      Math.abs(p.params.plasticityRate - params.plasticityRate) < 1e-9 &&
+      Math.abs(p.params.decayFactor - params.decayFactor) < 1e-9
+  )?.id;
+
   return (
     <section className="space-y-6" aria-label="Interactive synaptic memory lab">
+      {/* ---------- Presets ---------- */}
+      <div>
+        <div className="text-[11px] font-semibold tracking-wide text-muted uppercase mb-2">
+          Scenario Presets
+        </div>
+        <div
+          className="flex flex-wrap gap-2"
+          role="group"
+          aria-label="Memory scenario presets"
+        >
+          {PRESETS.map((preset) => {
+            const active = preset.id === activePresetId;
+            return (
+              <button
+                key={preset.id}
+                onClick={() => setParams(preset.params)}
+                title={`${preset.description} — η ${preset.params.plasticityRate}, λ ${preset.params.decayFactor}`}
+                aria-pressed={active}
+                className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition-colors ${
+                  active
+                    ? "border-accent bg-accent/15 text-accent-strong"
+                    : "border-edge bg-surface text-muted hover:border-accent/50 hover:text-foreground"
+                }`}
+              >
+                <span aria-hidden>{preset.emoji}</span>
+                {preset.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* ---------- Sliders ---------- */}
       <div className="grid gap-4 md:grid-cols-2">
         <Slider
