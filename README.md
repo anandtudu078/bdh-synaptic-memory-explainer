@@ -159,14 +159,6 @@ Full discussion lives in the app's **Limitations** section.
 
 ---
 
-## 🤖 AI-Agent Disclosure
-
-This project was **built end-to-end by an AI coding agent**: [Codebuff](https://freebuff.com) (Freebuff), running the `z-ai/glm-5.3-flash` model, working under human direction and review by [@anandtudu078](https://github.com/anandtudu078).
-
-- All application code (`lib/engine.ts`, `components/*`, `app/*`) was authored by the agent.
-- Provenance metadata also lives in the `ai` field of [`package.json`](package.json).
-- The simulation, citations, and conceptual framing were reviewed for correctness against the primary BDH paper.
-
 *Built as an educational explainer — not affiliated with Pathway.*
 
 ---
