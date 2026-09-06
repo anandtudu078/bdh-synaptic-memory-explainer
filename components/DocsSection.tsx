@@ -1,9 +1,12 @@
+"use client";
+
 import {
   BookOpen,
   AlertTriangle,
   FileText,
   BookMarked,
   FlaskConical,
+  Download,
 } from "lucide-react";
 
 const LIMITATIONS = [
@@ -154,17 +157,28 @@ export default function DocsSection() {
         </ol>
       </div>
 
-      {/* PDF export block */}
-      <div className="rounded-xl border border-dashed border-accent/40 bg-accent/5 p-6">
-        <div className="flex items-center gap-2 mb-3">
-          <FileText className="h-5 w-5 text-accent-strong" />
-          <h2 className="text-lg font-semibold">1-Page PDF Summary — Export Block</h2>
-        </div>
-        <p className="text-xs text-muted mb-4 leading-relaxed">
-          The block below is structured for direct copy into a one-page PDF export (print this
-          section, or wire it to a headless-Chromium PDF step in CI).
-        </p>
-        <div className="rounded-lg bg-background border border-edge p-5 font-mono text-[11px] leading-relaxed text-muted space-y-2">
+      {/* PDF export block — the only section rendered when printing */}
+      <div className="print-visible">
+        <section className="rounded-xl border border-dashed border-accent/40 bg-accent/5 p-6">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-3 no-print">
+            <div className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-accent-strong" />
+              <h2 className="text-lg font-semibold">1-Page PDF Summary</h2>
+            </div>
+            <button
+              onClick={() => window.print()}
+              className="inline-flex items-center gap-2 rounded-lg bg-accent/15 border border-accent/40 px-4 py-2 text-sm font-medium text-accent-strong hover:bg-accent/25 transition-colors"
+              aria-label="Download the one-page summary as PDF via the print dialog"
+            >
+              <Download className="h-4 w-4" />
+              Download 1-page PDF
+            </button>
+          </div>
+          <p className="text-xs text-muted mb-4 leading-relaxed no-print">
+            Opens your browser&apos;s print dialog — choose <strong className="text-foreground">“Save as PDF”</strong>.
+            Only this summary is printed: claim, mechanism, trade-off, BDH link, and sources on one A4 page.
+          </p>
+          <div className="print-summary rounded-lg bg-background border border-edge p-5 font-mono text-[11px] leading-relaxed text-muted space-y-2">
           <p className="text-accent-strong font-semibold">
             SYNAPTIC PLASTICITY AS SHORT-TERM MEMORY — 1-PAGE SUMMARY
           </p>
@@ -194,7 +208,8 @@ export default function DocsSection() {
             Sources: Kosowski et al. 2025 (primary); Schlag et al. 2021; Gu &amp; Dao 2023;
             Orvieto et al. 2024; Ramsauer et al. 2020; Hopfield 1982.
           </p>
-        </div>
+          </div>
+        </section>
       </div>
     </section>
   );

@@ -123,3 +123,55 @@ input[type="range"]::-moz-range-thumb {
 ::selection {
   background: rgba(56, 189, 248, 0.35);
 }
+
+/* ---------- Print: one-page PDF export ---------- */
+/* The Download PDF button prints only the claim + summary block. */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #111111 !important;
+  }
+
+  /* Hide everything interactive by default; `print-visible` re-opts sections in. */
+  header,
+  section,
+  footer,
+  nav,
+  button {
+    display: none !important;
+  }
+
+  section.print-visible,
+  section.print-visible * {
+    display: revert !important;
+  }
+
+  /* The summary card itself: white, black text, no borders/shadows. */
+  .print-summary,
+  .print-summary * {
+    background: transparent !important;
+    color: #111111 !important;
+    border-color: #cccccc !important;
+    box-shadow: none !important;
+  }
+
+  .print-summary {
+    border: 1px solid #cccccc !important;
+    padding: 24pt !important;
+    font-size: 10.5pt !important;
+    line-height: 1.5 !important;
+  }
+
+  .print-summary .font-mono {
+    font-size: 9pt !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  @page {
+    size: A4;
+    margin: 14mm;
+  }
+}
