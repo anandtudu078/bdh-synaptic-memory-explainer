@@ -17,6 +17,11 @@ import dynamic from "next/dynamic";
 import {
   MATRIX_SIZE,
   TOKEN_STREAM,
+  CUE_TOKEN,
+  CUE_SPIKES,
+  PRESETS,
+  DEFAULT_PARAMS,
+  paramsMatch,
   replayStream,
   scoreAllTokens,
   meanUtilization,
@@ -26,7 +31,6 @@ import {
 } from "@/lib/engine";
 import TruthVsEstimate from "./TruthVsEstimate";
 
-const CUE_TOKEN = "the";
 const PLAY_MS = 750; // per-token playback interval
 
 // Lazy-load three.js terrain (~500 KB gz) only when the user opens the 3D view.
@@ -37,56 +41,17 @@ const SynapticTerrain3D = dynamic(() => import("./SynapticTerrain3D"), {
   ),
 });
 
-// One-click demo scenarios: (η, λ) pairs that expose different trade-offs.
-const PRESETS: {
-  id: string;
-  label: string;
-  emoji: string;
-  description: string;
-  params: EngineParams;
-}[] = [
-  {
-    id: "goldfish",
-    label: "Goldfish",
-    emoji: "🐟",
-    description: "Fast write, fast fade — pure working memory",
-    params: { plasticityRate: 0.9, decayFactor: 0.82 },
-  },
-  {
-    id: "balanced",
-    label: "Balanced",
-    emoji: "⚖️",
-    description: "Default: moderate writing and retention",
-    params: { plasticityRate: 0.45, decayFactor: 0.92 },
-  },
-  {
-    id: "elephant",
-  label: "Elephant",
-    emoji: "🐘",
-    description: "Slow write, long retention — stale traces linger",
-    params: { plasticityRate: 0.3, decayFactor: 0.995 },
-  },
-];
-
 export default function SynapticLab() {
-  const [params, setParams] = useState<EngineParams>({
-    plasticityRate: 0.45,
-    decayFactor: 0.92,
-  });
-  const onParamsChange = setParams;
+  const [params, setParams] = useState<EngineParams>(DEFAULT_PARAMS);
   const [count, setCount] = useState(0); // tokens processed
   const [playing, setPlaying] = useState(false);
   const [view3d, setView3d] = useState(false); // 2D heatmap ↔ 3D terrain
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const matrix: Matrix = useMemo(() => replayStream(count, params), [count, params]);
-  const cueSpikes = useMemo(
-    () => TOKEN_STREAM.find((t) => t.text === CUE_TOKEN)!.spikes,
-    []
-  );
   const scores: TokenScore[] = useMemo(
-    () => scoreAllTokens(matrix, cueSpikes, count),
-    [matrix, cueSpikes, count]
+    () => scoreAllTokens(matrix, CUE_SPIKES, count),
+    [matrix, count]
   );
   const utilization = useMemo(() => meanUtilization(matrix), [matrix]);
 
@@ -116,12 +81,8 @@ export default function SynapticLab() {
 
   const newSpikes = count > 0 ? TOKEN_STREAM[count - 1].spikes : null;
 
-  // A preset is "active" when current params exactly match its (η, λ).
-  const activePresetId = PRESETS.find(
-    (p) =>
-      Math.abs(p.params.plasticityRate - params.plasticityRate) < 1e-9 &&
-      Math.abs(p.params.decayFactor - params.decayFactor) < 1e-9
-  )?.id;
+  // A preset is "active" when current params match its (η, λ).
+  const activePresetId = PRESETS.find((p) => paramsMatch(p.params, params))?.id;
 
   return (
     <section className="space-y-6" aria-label="Interactive synaptic memory lab">
@@ -167,7 +128,7 @@ export default function SynapticLab() {
           max={1}
           step={0.01}
           format={(v) => `η = ${v.toFixed(2)}`}
-          onChange={(v) => onParamsChange({ ...params, plasticityRate: v })}
+          onChange={(v) => setParams({ ...params, plasticityRate: v })}
           hint="How strongly co-firing neurons wire together. Higher η writes traces faster — but also writes more interference."
         />
         <Slider
@@ -178,7 +139,7 @@ export default function SynapticLab() {
           max={0.999}
           step={0.001}
           format={(v) => `λ = ${v.toFixed(3)}`}
-          onChange={(v) => onParamsChange({ ...params, decayFactor: v })}
+          onChange={(v) => setParams({ ...params, decayFactor: v })}
           hint="Multiplicative forgetting per step. Low λ = fast fade (working memory). High λ = long-lived traces but slower overwrite."
         />
       </div>
@@ -381,7 +342,15 @@ export default function SynapticLab() {
 
 // subcomponents
 
-function MatrixGrid({ matrix, newSpikes }: { matrix: Matrix; newSpikes: number[] | null }) {
+export function MatrixGrid({
+  matrix,
+  newSpikes,
+  compact = false,
+}: {
+  matrix: Matrix;
+  newSpikes: number[] | null;
+  compact?: boolean;
+}) {
   const flashSet = useMemo(() => {
     const s = new Set<string>();
     if (newSpikes) {
@@ -397,7 +366,7 @@ function MatrixGrid({ matrix, newSpikes }: { matrix: Matrix; newSpikes: number[]
       className="mx-auto grid gap-[2px] select-none"
       style={{
         gridTemplateColumns: `repeat(${MATRIX_SIZE}, minmax(0, 1fr))`,
-        maxWidth: 520,
+        maxWidth: compact ? 240 : 520,
       }}
       role="img"
       aria-label="Heatmap of the synaptic weight matrix. Brighter cells are stronger synapses."

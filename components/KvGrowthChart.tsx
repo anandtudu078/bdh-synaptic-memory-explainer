@@ -36,11 +36,13 @@ export default function KvGrowthChart({ tokens }: Props) {
   const cacheUnits = tokens * KV_PER_TOKEN;
   const crossoverToken = SYNAPSE_UNITS / KV_PER_TOKEN; // 144
 
-  // cache line from (0,0) to (MAX_TOKENS, 2048) — clipped at chart top
+  // The cache line reaches MAX_UNITS at 256 tokens, well before MAX_TOKENS.
+  // Stop it at the ceiling so it never draws outside the plot area.
+  const cacheEndToken = Math.min(MAX_TOKENS, MAX_UNITS / KV_PER_TOKEN);
   const cacheX1 = x(0);
   const cacheY1 = y(0);
-  const cacheX2 = x(MAX_TOKENS);
-  const cacheY2 = y(MAX_TOKENS * KV_PER_TOKEN);
+  const cacheX2 = x(cacheEndToken);
+  const cacheY2 = y(cacheEndToken * KV_PER_TOKEN);
 
   const synX1 = x(0);
   const synY1 = y(SYNAPSE_UNITS);
@@ -58,7 +60,7 @@ export default function KvGrowthChart({ tokens }: Props) {
           Memory vs Context Length
         </h4>
         <span className="font-mono text-[10px] text-muted">
-          log of units, linear scale
+          units of state · linear scale
         </span>
       </div>
 
