@@ -10,7 +10,10 @@ import {
   Thermometer,
   Activity,
   Info,
+  Boxes,
+  Grid3x3,
 } from "lucide-react";
+import dynamic from "next/dynamic";
 import {
   MATRIX_SIZE,
   TOKEN_STREAM,
@@ -23,8 +26,16 @@ import {
 } from "@/lib/engine";
 import TruthVsEstimate from "./TruthVsEstimate";
 
-const CUE_TOKEN = "the"; // probe token for the recall panel
+const CUE_TOKEN = "the";
 const PLAY_MS = 750; // per-token playback interval
+
+// Lazy-load three.js terrain (~500 KB gz) only when the user opens the 3D view.
+const SynapticTerrain3D = dynamic(() => import("./SynapticTerrain3D"), {
+  ssr: false,
+  loading: () => (
+    <div className="rounded-xl border border-edge bg-surface p-4 h-[420px] animate-pulse" />
+  ),
+});
 
 // One-click demo scenarios: (η, λ) pairs that expose different trade-offs.
 const PRESETS: {
@@ -65,6 +76,7 @@ export default function SynapticLab() {
   const onParamsChange = setParams;
   const [count, setCount] = useState(0); // tokens processed
   const [playing, setPlaying] = useState(false);
+  const [view3d, setView3d] = useState(false); // 2D heatmap ↔ 3D terrain
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const matrix: Matrix = useMemo(() => replayStream(count, params), [count, params]);
@@ -290,15 +302,49 @@ export default function SynapticLab() {
         {/* Matrix card */}
         <div className="lg:col-span-3">
           <div className="rounded-xl border border-edge bg-surface p-4">
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
               <h3 className="text-sm font-semibold tracking-wide text-muted uppercase">
                 Synaptic Weight Matrix W ({MATRIX_SIZE}×{MATRIX_SIZE})
               </h3>
-              <span className="font-mono text-xs text-muted">
-                fixed size · {MATRIX_SIZE * MATRIX_SIZE} synapses
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-xs text-muted">
+                  fixed · {MATRIX_SIZE * MATRIX_SIZE} synapses
+                </span>
+                <div
+                  className="flex rounded-lg border border-edge overflow-hidden"
+                  role="group"
+                  aria-label="Matrix view mode"
+                >
+                  <button
+                    onClick={() => setView3d(false)}
+                    aria-pressed={!view3d}
+                    className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs transition-colors ${
+                      !view3d
+                        ? "bg-accent/15 text-accent-strong"
+                        : "text-muted hover:text-foreground"
+                    }`}
+                  >
+                    <Grid3x3 className="h-3.5 w-3.5" /> 2D
+                  </button>
+                  <button
+                    onClick={() => setView3d(true)}
+                    aria-pressed={view3d}
+                    className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs transition-colors ${
+                      view3d
+                        ? "bg-accent/15 text-accent-strong"
+                        : "text-muted hover:text-foreground"
+                    }`}
+                  >
+                    <Boxes className="h-3.5 w-3.5" /> 3D
+                  </button>
+                </div>
+              </div>
             </div>
-            <MatrixGrid matrix={matrix} newSpikes={newSpikes} />
+            {view3d ? (
+              <SynapticTerrain3D matrix={matrix} newSpikes={newSpikes} height={420} />
+            ) : (
+              <MatrixGrid matrix={matrix} newSpikes={newSpikes} />
+            )}
             <div className="mt-3 flex flex-wrap items-center gap-3 text-[11px] text-muted">
               <span className="inline-flex items-center gap-1.5">
                 <span className="inline-block h-3 w-3 rounded-sm bg-surface-2 border border-edge" />
