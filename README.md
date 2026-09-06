@@ -97,6 +97,23 @@ npm run build
 npm start
 ```
 
+### Tests, Types, Lint
+
+The engine is pure and framework-free, so its tests are plain assertions with no
+test-runner dependency:
+
+```bash
+npm test
+```
+
+```bash
+npm run typecheck
+```
+
+```bash
+npm run lint
+```
+
 ### Deploy to Vercel
 
 One click: [vercel.com/new](https://vercel.com/new) → import the repo → framework auto-detects Next.js → deploy. No environment variables needed.
@@ -118,9 +135,15 @@ bdh-synaptic-memory-explainer/
 │   ├── BdhModule.tsx     # BDH pillars + Transformer ↔ BDH mapping table
 │   └── DocsSection.tsx   # How-it-works, limitations, citations, PDF export block
 ├── lib/
-│   └── engine.ts         # ⭐ Hebbian simulation: W ← λW + η(x·xᵀ), recall, budget math
+│   └── engine.ts         # ⭐ Hebbian simulation, presets, scoring, budget math
+├── tests/
+│   └── engine.test.ts    # Engine smoke tests (npm test)
 └── package.json
 ```
+
+`lib/engine.ts` is the single source of truth: the simulation, the scenario
+presets, the recall cue, and the scoring helpers all live there. Components
+render it — they never redefine constants of their own.
 
 ---
 

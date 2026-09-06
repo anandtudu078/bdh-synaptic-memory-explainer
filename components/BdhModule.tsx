@@ -37,28 +37,24 @@ const PILLARS: {
   },
 ];
 
-const MAPPING: { transformer: string; bdh: string }[] = {
-  ...[
-    {
-      transformer: "KV-cache (keys + values, grows per token)",
-      bdh: "Synaptic weight state W (fixed size, decayed per step)",
-    },
-    {
-      transformer: "Attention scores = Query·Key (global, dense)",
-      bdh: "Local neighbor interactions on a sparse graph",
-    },
-    {
-      transformer: "Dense positive+negative activations",
-      bdh: "Sparse, non-negative 'spike' activations (~5%)",
-    },
-    {
-      transformer: "Context = full token history, kept verbatim",
-      bdh: "Context = compressed plastic trace, decayed and saturated",
-    },
-  ],
-};
-
-const MAPPING_ROWS = Object.values(MAPPING);
+const MAPPING_ROWS: { transformer: string; bdh: string }[] = [
+  {
+    transformer: "KV-cache (keys + values, grows per token)",
+    bdh: "Synaptic weight state W (fixed size, decayed per step)",
+  },
+  {
+    transformer: "Attention scores = Query·Key (global, dense)",
+    bdh: "Local neighbor interactions on a sparse graph",
+  },
+  {
+    transformer: "Dense positive+negative activations",
+    bdh: "Sparse, non-negative 'spike' activations (~5%)",
+  },
+  {
+    transformer: "Context = full token history, kept verbatim",
+    bdh: "Context = compressed plastic trace, decayed and saturated",
+  },
+];
 
 export default function BdhModule() {
   return (

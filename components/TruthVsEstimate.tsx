@@ -5,7 +5,9 @@ import { Scale, HardDrive, Cpu, TrendingDown, Check, X } from "lucide-react";
 import {
   MATRIX_SIZE,
   TOKEN_STREAM,
-  recall,
+  CUE_SPIKES,
+  scoreAllTokens,
+  scoreQuality,
   SYNAPSE_UNITS,
   KV_UNITS_PER_TOKEN,
   REAL_KV_BYTES_PER_TOKEN,
@@ -28,35 +30,23 @@ type Row = {
 export default function TruthVsEstimate({ matrix, count }: Props) {
   // Truth = 1.0 for every seen token (an exact cache never forgets or confuses);
   // estimate = what the fixed-size synaptic state actually recalls right now.
-  const rows: Row[] = useMemo(() => {
-    const cueSpikes = TOKEN_STREAM.find((t) => t.text === "the")!.spikes;
-    const y = recall(matrix, cueSpikes);
-    const distinct = new Map<string, number[]>();
-    for (const tok of TOKEN_STREAM) {
-      if (!distinct.has(tok.text)) distinct.set(tok.text, tok.spikes);
-    }
-    return [...distinct.entries()].map(([text, spikes]) => {
-      const seen = seenCount(count, text);
-      const estimate =
-        count === 0 ? 0 : spikes.reduce((acc, i) => acc + y[i], 0) / spikes.length;
-      const truth = seen > 0 ? 1 : 0;
-      return { text, estimate, truth, seen };
-    });
-  }, [matrix, count]);
+  const scores = useMemo(
+    () => scoreAllTokens(matrix, CUE_SPIKES, count),
+    [matrix, count]
+  );
 
-  const { fidelity, interference } = useMemo(() => {
-    const seen = rows.filter((r) => r.seen > 0);
-    const fid =
-      seen.length === 0
-        ? 0
-        : seen.reduce((acc, r) => acc + Math.min(r.estimate, r.truth), 0) / seen.length;
-    const unseen = rows.filter((r) => r.seen === 0);
-    const int =
-      unseen.length === 0
-        ? 0
-        : unseen.reduce((acc, r) => acc + r.estimate, 0) / unseen.length;
-    return { fidelity: fid, interference: int };
-  }, [rows]);
+  const rows: Row[] = useMemo(
+    () =>
+      scores.map((s) => ({
+        text: s.text,
+        estimate: s.score,
+        truth: s.count > 0 ? 1 : 0,
+        seen: s.count,
+      })),
+    [scores]
+  );
+
+  const { fidelity, interference } = useMemo(() => scoreQuality(scores), [scores]);
 
   const cacheUnits = count * KV_UNITS_PER_TOKEN;
   const budgetMax = Math.max(SYNAPSE_UNITS, cacheUnits);
@@ -212,12 +202,6 @@ export default function TruthVsEstimate({ matrix, count }: Props) {
 }
 
 // helpers
-
-function seenCount(count: number, text: string): number {
-  let n = 0;
-  for (let t = 0; t < count; t++) if (TOKEN_STREAM[t].text === text) n++;
-  return n;
-}
 
 function fmtBytes(b: number): string {
   if (b >= 1024 ** 3) return `${(b / 1024 ** 3).toFixed(1)} GB`;

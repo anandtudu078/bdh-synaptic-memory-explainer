@@ -123,6 +123,24 @@ export function scoreAllTokens(
   });
 }
 
+/**
+ * Fidelity = mean recall on tokens actually seen (1.0 = an oracle cache).
+ * Interference = mean leakage onto tokens never seen (0 = no crosstalk).
+ * Scores are clamped to [0,1] so a saturated trace cannot report >100%.
+ */
+export function scoreQuality(scores: TokenScore[]): {
+  fidelity: number;
+  interference: number;
+} {
+  const seen = scores.filter((s) => s.count > 0);
+  const unseen = scores.filter((s) => s.count === 0);
+  const mean = (xs: TokenScore[]) =>
+    xs.length === 0
+      ? 0
+      : xs.reduce((acc, s) => acc + Math.min(Math.max(s.score, 0), 1), 0) / xs.length;
+  return { fidelity: mean(seen), interference: mean(unseen) };
+}
+
 /** Mean synapse weight — how "full" the memory is. */
 export function meanUtilization(W: Matrix): number {
   let sum = 0;
@@ -139,4 +157,56 @@ export const REAL_KV_BYTES_PER_TOKEN = 2 * 32 * 32 * 128 * 2;
 
 export function kvUnitsAt(tokens: number): number {
   return tokens * KV_UNITS_PER_TOKEN;
+}
+
+// The token whose spike pattern probes the recall vector across the UI.
+export const CUE_TOKEN = "the";
+
+/** Spike pattern of the cue token, resolved once from the stream. */
+export const CUE_SPIKES: number[] =
+  TOKEN_STREAM.find((t) => t.text === CUE_TOKEN)!.spikes;
+
+export type Preset = {
+  id: string;
+  label: string;
+  emoji: string;
+  description: string;
+  params: EngineParams;
+};
+
+// One-click demo scenarios: (η, λ) pairs that expose different trade-offs.
+// Single source of truth — the lab and the A/B race both read from here.
+export const PRESETS: Preset[] = [
+  {
+    id: "goldfish",
+    label: "Goldfish",
+    emoji: "🐟",
+    description: "Fast write, fast fade — pure working memory",
+    params: { plasticityRate: 0.9, decayFactor: 0.82 },
+  },
+  {
+    id: "balanced",
+    label: "Balanced",
+    emoji: "⚖️",
+    description: "Default: moderate writing and retention",
+    params: { plasticityRate: 0.45, decayFactor: 0.92 },
+  },
+  {
+    id: "elephant",
+    label: "Elephant",
+    emoji: "🐘",
+    description: "Slow write, long retention — stale traces linger",
+    params: { plasticityRate: 0.3, decayFactor: 0.995 },
+  },
+];
+
+/** Default params the lab boots with (the "balanced" preset). */
+export const DEFAULT_PARAMS: EngineParams = PRESETS[1].params;
+
+/** True when two parameter sets are equal within float tolerance. */
+export function paramsMatch(a: EngineParams, b: EngineParams): boolean {
+  return (
+    Math.abs(a.plasticityRate - b.plasticityRate) < 1e-9 &&
+    Math.abs(a.decayFactor - b.decayFactor) < 1e-9
+  );
 }
