@@ -12,6 +12,7 @@ import {
   Info,
   Boxes,
   Grid3x3,
+  Swords,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import {
@@ -25,6 +26,7 @@ import {
   type TokenScore,
 } from "@/lib/engine";
 import TruthVsEstimate from "./TruthVsEstimate";
+import ScenarioCompare from "./ScenarioCompare";
 
 const CUE_TOKEN = "the";
 const PLAY_MS = 750; // per-token playback interval
@@ -77,6 +79,7 @@ export default function SynapticLab() {
   const [count, setCount] = useState(0); // tokens processed
   const [playing, setPlaying] = useState(false);
   const [view3d, setView3d] = useState(false); // 2D heatmap ↔ 3D terrain
+  const [compareMode, setCompareMode] = useState(false); // single ↔ A/B race
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const matrix: Matrix = useMemo(() => replayStream(count, params), [count, params]);
@@ -125,10 +128,28 @@ export default function SynapticLab() {
 
   return (
     <section className="space-y-6" aria-label="Interactive synaptic memory lab">
+      {compareMode && <ScenarioCompare />}
+
+      {!compareMode && (
+      <>
       {/* ---------- Presets ---------- */}
       <div>
-        <div className="text-[11px] font-semibold tracking-wide text-muted uppercase mb-2">
-          Scenario Presets
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-[11px] font-semibold tracking-wide text-muted uppercase">
+            Scenario Presets
+          </div>
+          <button
+            onClick={() => setCompareMode((v) => !v)}
+            aria-pressed={compareMode}
+            className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+              compareMode
+                ? "border-fire/60 bg-fire/15 text-fire"
+                : "border-edge text-muted hover:border-fire/40 hover:text-foreground"
+            }`}
+          >
+            <Swords className="h-3.5 w-3.5" />
+            {compareMode ? "Exit race" : "Race mode"}
+          </button>
         </div>
         <div
           className="flex flex-wrap gap-2"
@@ -375,13 +396,23 @@ export default function SynapticLab() {
 
       {/* Truth-vs-estimate panel */}
       <TruthVsEstimate matrix={matrix} count={count} />
+      </>
+      )}
     </section>
   );
 }
 
 // subcomponents
 
-function MatrixGrid({ matrix, newSpikes }: { matrix: Matrix; newSpikes: number[] | null }) {
+export function MatrixGrid({
+  matrix,
+  newSpikes,
+  compact = false,
+}: {
+  matrix: Matrix;
+  newSpikes: number[] | null;
+  compact?: boolean;
+}) {
   const flashSet = useMemo(() => {
     const s = new Set<string>();
     if (newSpikes) {
@@ -397,7 +428,7 @@ function MatrixGrid({ matrix, newSpikes }: { matrix: Matrix; newSpikes: number[]
       className="mx-auto grid gap-[2px] select-none"
       style={{
         gridTemplateColumns: `repeat(${MATRIX_SIZE}, minmax(0, 1fr))`,
-        maxWidth: 520,
+        maxWidth: compact ? 240 : 520,
       }}
       role="img"
       aria-label="Heatmap of the synaptic weight matrix. Brighter cells are stronger synapses."
