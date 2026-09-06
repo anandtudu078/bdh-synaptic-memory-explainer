@@ -140,9 +140,10 @@ Full discussion lives in the app's **Limitations** section.
 
 ## 🔮 Roadmap
 
-- [ ] Slider presets for demo scenarios (goldfish / balanced / elephant)
-- [ ] Live KV-growth chart (O(T) vs O(1))
-- [ ] One-click 1-page PDF export
+- [x] Slider presets for demo scenarios (goldfish / balanced / elephant)
+- [x] Live KV-growth chart (O(T) vs O(1))
+- [x] One-click 1-page PDF export
+- [x] 3D synaptic terrain view (lazy-loaded three.js)
 - [ ] Side-by-side scenario comparison mode
 - [ ] Optional: BDH-style spiking threshold dynamics
 
