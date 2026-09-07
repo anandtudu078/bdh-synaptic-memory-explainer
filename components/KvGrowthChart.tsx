@@ -1,5 +1,4 @@
-// Live memory-budget chart: fixed synaptic state (O(1)) vs growing KV-cache (O(T)).
-// Pure SVG — no chart dependency. Crossover at token 576/4 = 144.
+// Live memory-budget chart: fixed state (O(1)) vs KV-cache (O(T)). Pure SVG; crossover @ 144.
 
 "use client";
 

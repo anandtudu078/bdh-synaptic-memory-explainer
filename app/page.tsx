@@ -1,5 +1,6 @@
 import Header from "@/components/Header";
 import SynapticLab from "@/components/SynapticLab";
+import ClaimExperiment from "@/components/ClaimExperiment";
 import SixtySecondTest from "@/components/SixtySecondTest";
 import BdhModule from "@/components/BdhModule";
 import DocsSection from "@/components/DocsSection";
@@ -14,6 +15,8 @@ export default function Home() {
         <Header claim={CLAIM} />
 
         <SynapticLab />
+
+        <ClaimExperiment />
 
         <SixtySecondTest />
 

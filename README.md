@@ -42,6 +42,7 @@ This claim is grounded in: **Kosowski et al. (2025)**, who introduce BDH and sho
 | 6 | Reset and crank **Plasticity Rate η** to 1.0 | Faster writing, but more crosstalk — the core trade-off |
 | 7 | Take the **60-Second Test** | 3 from-memory checks with instant feedback, then explain the claim back in your own words and compare with a model answer |
 | 8 | Flip **Race mode** | Two (η, λ) memory policies replay the same token stream side by side — watch fidelity and interference diverge |
+| 9 | Run the **Falsification Experiment** | One click: three checks try to break the claim on a 300-token stream — verdict computed live, never scripted |
 
 Every step updates in **sub-second** — the whole simulation runs client-side with zero backend.
 
@@ -92,6 +93,7 @@ Everything in the artifact falls into exactly one of these categories:
 | Truth-vs-estimate scoring & fidelity/interference metrics | **Live** | Computed per token from the simulation |
 | 60-second self-test | **Live** | Graded client-side against the engine's actual behavior; the learner's explanation never leaves the browser |
 | Race mode (ScenarioCompare) | **Live** | Two (η, λ) policies replay the identical stream; per-side matrix, fidelity and interference from the same engine |
+| Falsification experiment (ClaimExperiment) | **Live** | Three claim checks recomputed from the engine on every run — deterministic, nothing precomputed |
 | Memory-budget bars (O(1) vs O(T)) | **Live** | Derived from current stream length |
 | KV-growth chart | **Animated SVG** | Chart shape is deterministic given stream length; animation is CSS/keyframe-driven, no chart library |
 | 3D synaptic terrain | **Animated, procedural** | three.js mesh generated in code from the live matrix; no external 3D assets; lazy-loaded |
@@ -173,6 +175,7 @@ bdh-synaptic-memory-explainer/
 │   ├── Header.tsx        # Title, audience, the one-sentence claim
 │   ├── SynapticLab.tsx   # ⭐ Interactive matrix, sliders, token stream, recall probe
 │   ├── ScenarioCompare.tsx  # Race mode: two (η, λ) policies replaying the same stream
+│   ├── ClaimExperiment.tsx  # One-click falsification experiment for the claim
 │   ├── SixtySecondTest.tsx  # 60-second self-test: from-memory checks + explain-it-back
 │   ├── TruthVsEstimate.tsx  # Model memory vs oracle truth + memory budget bars
 │   ├── KvGrowthChart.tsx # Pure-SVG chart: fixed state (O(1)) vs KV-cache (O(T))

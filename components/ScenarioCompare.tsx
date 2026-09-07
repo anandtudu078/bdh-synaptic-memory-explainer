@@ -1,5 +1,4 @@
-// Side-by-side A/B comparison: two (η, λ) configurations replaying the same
-// token stream. Shared playback; per-column matrix, recall probe, metrics.
+// Race mode: two (η, λ) policies replay the same stream side by side.
 
 "use client";
 

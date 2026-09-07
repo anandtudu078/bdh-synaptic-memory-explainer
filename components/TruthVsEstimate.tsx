@@ -28,8 +28,7 @@ type Row = {
 };
 
 export default function TruthVsEstimate({ matrix, count }: Props) {
-  // Truth = 1.0 for every seen token (an exact cache never forgets or confuses);
-  // estimate = what the fixed-size synaptic state actually recalls right now.
+  // Truth = 1.0 for every seen token (exact cache); estimate = the fixed state's recall.
   const scores = useMemo(
     () => scoreAllTokens(matrix, CUE_SPIKES, count),
     [matrix, count]
