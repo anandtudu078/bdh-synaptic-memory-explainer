@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Synaptic Plasticity as Short-Term Memory: What If Your LLM Didn't Need a KV-Cache?</title>
+<style>
+  :root {
+    --ink: #1a1d23;
+    --muted: #5a6270;
+    --accent: #b45309;
+    --edge: #e2e5ea;
+    --surface: #fafbfc;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: Georgia, "Times New Roman", serif;
+    color: var(--ink);
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 48px 40px;
+    font-size: 11.5pt;
+    line-height: 1.55;
+  }
+  h1 { font-size: 19pt; line-height: 1.25; margin: 0 0 6pt 0; }
+  h2 { font-size: 13.5pt; margin: 18pt 0 6pt 0; page-break-after: avoid; }
+  p { margin: 0 0 8pt 0; }
+  .meta { color: var(--muted); font-size: 9.5pt; margin-bottom: 14pt; }
+  .meta a { color: var(--muted); }
+  .claim {
+    background: var(--surface);
+    border-left: 3px solid var(--accent);
+    padding: 10pt 12pt;
+    margin: 12pt 0;
+    font-style: italic;
+  }
+  blockquote { margin: 0; }
+  a { color: var(--accent); text-decoration: none; }
+  code {
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 9.5pt;
+    background: var(--surface);
+    border: 1px solid var(--edge);
+    border-radius: 3px;
+    padding: 0 3px;
+  }
+  ul { margin: 0 0 8pt 0; padding-left: 18pt; }
+  li { margin-bottom: 5pt; }
+  ol { margin: 0 0 8pt 0; padding-left: 18pt; }
+  ol li { margin-bottom: 4pt; font-size: 10pt; }
+  .refs { font-size: 9.5pt; }
+  .tldr {
+    background: var(--surface);
+    border: 1px solid var(--edge);
+    border-radius: 4px;
+    padding: 9pt 11pt;
+    margin: 12pt 0;
+    font-size: 10pt;
+  }
+  .tldr p { margin: 0; }
+  table { border-collapse: collapse; width: 100%; margin: 10pt 0; font-size: 9.5pt; }
+  th, td { border: 1px solid var(--edge); padding: 4pt 6pt; text-align: left; vertical-align: top; }
+  th { background: var(--surface); }
+  table, tr { page-break-inside: avoid; }
+  .footnote {
+    border-top: 1px solid var(--edge);
+    margin-top: 16pt;
+    padding-top: 8pt;
+    color: var(--muted);
+    font-size: 8.5pt;
+  }
+  hr { border: none; border-top: 1px solid var(--edge); margin: 14pt 0; }
+  @page { margin: 18mm 16mm; }
+  @media print {
+    body { padding: 0; max-width: none; }
+    a { color: inherit; }
+    a[href^="http"]::after { content: " (" attr(href) ")"; font-size: 8pt; color: var(--muted); }
+  }
+</style>
+</head>
+<body>
+
+<h1>Synaptic Plasticity as Short-Term Memory: What If Your LLM Didn&rsquo;t Need a KV-Cache?</h1>
+
+<p class="meta">
+  Interactive explainer: <a href="https://bdh-synaptic-memory-explainer.vercel.app">bdh-synaptic-memory-explainer.vercel.app</a><br>
+  Anand Tudu &middot; September 2026 &middot; DataForge Pathway track
+</p>
+
+<div class="tldr">
+<p><strong>TL;DR</strong> &mdash; Transformers remember by <em>storing</em>: every token&rsquo;s keys and values pile up in a KV-cache that grows forever. Brains remember by <em>changing</em>: synapses strengthen when neurons co-fire, then decay. Recent architectures &mdash; most prominently Pathway&rsquo;s Dragon Hatchling (BDH) &mdash; show the second strategy can rival the first at real model scales, with <strong>constant memory instead of a growing cache</strong>. This post walks through the mechanism in three equations&rsquo; worth of math, and points to an interactive demo where you can break it yourself.</p>
+</div>
+
+<p>Every large language model you&rsquo;ve used carries a hidden burden: the <strong>Key-Value cache</strong>. To generate token <em>n+1</em>, a Transformer must attend over everything it has read so far, so it stores the keys and values of every previous token. The cache grows with every step &mdash; linearly with context length, and quadratically in attention compute. For long conversations, documents, or agents that run for hours, memory becomes the bottleneck.</p>
+
+<p>But your brain doesn&rsquo;t work that way. You are not storing a verbatim transcript of everything you&rsquo;ve ever read. Somehow, a fixed blob of neurons &mdash; the same 86 billion you woke up with &mdash; holds a working memory of this sentence <em>right now</em>. The mechanism is old, local, and simple: <strong>synaptic plasticity</strong>. When two neurons fire together, the connection between them strengthens; when they stop co-firing, the trace fades. <em>&ldquo;Neurons that fire together, wire together&rdquo;</em> &mdash; Hebb&rsquo;s postulate, formalized mathematically as the outer-product update <code>W &larr; &lambda;&middot;W + &eta;&middot;(x&middot;x&#7481;)</code> in associative memory models [<a href="https://www.pnas.org/doi/10.1073/pnas.79.8.2554">Hopfield, 1982</a>].</p>
+
+<div class="claim">
+<p>The claim this project explores &mdash; and lets you test with your own hands &mdash; is this:</p>
+<p><strong>Attention can be reformulated as synaptic memory: recent token interactions temporarily strengthen local connection weights via Hebbian updates, allowing a fixed-size recurrent state to process sequential context without a growing KV-cache.</strong></p>
+</div>
+
+<h2>The linear-attention insight: attention <em>is</em> a weight update</h2>
+
+<p>The pivotal modern result comes from Schlag, Irie &amp; Schmidhuber (2021), who showed that linear attention&rsquo;s KV-state is mathematically a <strong>fast weight program</strong>: each token performs a rank-1 Hebbian write into a matrix, and attention is just reading that matrix back out [<a href="https://arxiv.org/abs/2102.11174">arXiv:2102.11174</a>]. In other words, the Transformer already secretly performs a synaptic update &mdash; it just keeps the full unbounded history instead of letting it decay and interfere.</p>
+
+<p>This reframing collapses the distinction between &ldquo;caching&rdquo; and &ldquo;learning.&rdquo; A KV-cache is a memory with &lambda; = 1 (nothing fades) and &eta; = 1 (every token writes fully, verbatim). A Hebbian state is the same memory with &lambda; &lt; 1 (old traces decay) and sparse writes. The difference is a policy, not a category.</p>
+
+<h2>The 2022&ndash;2026 wave: fixed states that compete with attention</h2>
+
+<p>Three recent lines of work show this isn&rsquo;t just theory:</p>
+
+<ul>
+  <li><strong>State-space models.</strong> Mamba (Gu &amp; Dao, 2023) processes million-token sequences with a fixed-size selective state &mdash; no cache at all &mdash; matching Transformer quality at practical scales [<a href="https://arxiv.org/abs/2312.00752">arXiv:2312.00752</a>]. The LRU analysis of Orvieto et al. (2024) isolated exactly which ingredients (gating, normalization, decay) let linear recurrences close the quality gap with attention [<a href="https://arxiv.org/abs/2303.06349">arXiv:2303.06349</a>].</li>
+  <li><strong>Brain-inspired spiking graphs.</strong> The Dragon Hatchling (BDH) from Pathway (Kosowski et al., 2025) goes furthest in the biological direction: a scale-free local graph of spiking neurons whose <strong>synaptic state</strong> is the working memory. BDH models at 10M&ndash;1B parameters rival GPT-2 at equal size &mdash; with no KV-cache &mdash; and individual synapses are interpretable as the memory itself [<a href="https://arxiv.org/abs/2509.26507">arXiv:2509.26507</a>, code: <a href="https://github.com/pathwaycom/bdh">github.com/pathwaycom/bdh</a>].</li>
+  <li><strong>Associative-memory revival.</strong> Modern Hopfield networks (Ramsauer et al., 2020) reframed attention itself as associative retrieval [<a href="https://arxiv.org/abs/2006.16222">arXiv:2006.16222</a>], giving the synaptic view a clean theoretical backbone.</li>
+</ul>
+
+<h2>What you give up: interference, forgetting, and order</h2>
+
+<p>A fixed state is not a free lunch. Our interactive demo makes the trade-offs visceral &mdash; you drag a slider and watch them happen:</p>
+
+<ul>
+  <li><strong>Interference.</strong> Tokens with overlapping patterns write to the same synapses. Recall &ldquo;the&rdquo; and &ldquo;a&rdquo; lights up too, because they share neurons. Capacity of naive outer-product memories is ~0.14&middot;d patterns [<a href="https://www.pnas.org/doi/10.1073/pnas.79.8.2554">Hopfield, 1982</a>] &mdash; for our 24-neuron demo, a handful of tokens saturates it.</li>
+  <li><strong>Catastrophic forgetting.</strong> With decay &lambda; &lt; 1, old traces fade multiplicatively. With &lambda; = 1 and clamping, the matrix saturates and new memories crush old ones. Verbatim recall of an unbounded stream is simply impossible in 576 numbers.</li>
+  <li><strong>Weak order information.</strong> Outer-product traces are largely order-agnostic: &ldquo;dog bites man&rdquo; and &ldquo;man bites dog&rdquo; write nearly the same synapses. Transformers get order free from positional embeddings plus the cache; recurrent states need extra structure.</li>
+</ul>
+
+<p>These are precisely the failure modes the BDH paper, Mamba, and the LRU work engineer around &mdash; with sparsity, gating, and normalization respectively [<a href="https://arxiv.org/abs/2509.26507">arXiv:2509.26507</a>; <a href="https://arxiv.org/abs/2312.00752">arXiv:2312.00752</a>; <a href="https://arxiv.org/abs/2303.06349">arXiv:2303.06349</a>].</p>
+
+<h2>The demo, in one table</h2>
+
+<p>Every slider in the <a href="https://bdh-synaptic-memory-explainer.vercel.app">interactive explainer</a> maps to a term in the update rule &mdash; and to a concept in the literature:</p>
+
+<table>
+  <tr><th>Demo element</th><th>Equation term</th><th>What it teaches</th></tr>
+  <tr><td>Decay Factor <strong>&lambda;</strong></td><td>the &lambda; in <code>W &larr; &lambda;&middot;W + &eta;&middot;(x&middot;x&#7481;)</code></td><td>How fast memory fades &mdash; the short-term in <em>short-term memory</em></td></tr>
+  <tr><td>Plasticity Rate <strong>&eta;</strong></td><td>the &eta; &mdash; the write strength</td><td>Speed vs. crosstalk: fast writing also fast corrupts</td></tr>
+  <tr><td>Token stream</td><td>the sparse pattern <code>x</code></td><td>Sparsity keeps interference low; overlap is what corrupts recall</td></tr>
+  <tr><td>Recall Probe</td><td><code>y = W&middot;cue</code></td><td>Memory is <em>content-addressed</em>: similarity, not position</td></tr>
+  <tr><td>Truth vs Estimate</td><td>oracle with perfect cache</td><td>The exact price paid for O(1) memory, per token</td></tr>
+  <tr><td>Memory Budget bars</td><td>O(1) vs O(T)</td><td>Why this matters at all: the cache is the Transformer&rsquo;s scaling tax</td></tr>
+</table>
+
+<h2>The honest takeaway</h2>
+
+<p>Neither strategy wins outright. The KV-cache is exact, order-aware, and unbounded &mdash; and that last property is exactly its weakness at scale. Synaptic state is bounded, biologically plausible, and interpretable by construction &mdash; and pays for it with interference, forgetting, and weak order. The interesting question for the next few years is not <em>which one wins</em>, but <strong>which mixtures win</strong>: hybrid stacks that cache verbatim what matters and let the rest decay through plastic state are already appearing, and BDH&rsquo;s result &mdash; matching GPT-2 quality with synaptic memory and no cache &mdash; is the strongest evidence yet that the plastic half of that mixture can carry more weight than we assumed.</p>
+
+<h2>Try it yourself</h2>
+
+<p>The <a href="https://bdh-synaptic-memory-explainer.vercel.app">interactive explainer</a> runs the Hebbian loop live in your browser: a 24&times;24 synapse matrix, a token stream, a recall probe, and an oracle that shows what a perfect cache would have recalled instead. Feed it tokens, kill &lambda; to watch memory evaporate, crank &eta; to watch crosstalk explode. The demo is deliberately a <strong>toy of the mechanism, not of BDH itself</strong> &mdash; we strip spiking thresholds and learned plasticity so the core loop is visible at a glance.</p>
+
+<hr>
+
+<h2>References</h2>
+
+<div class="refs">
+<ol>
+  <li>Kosowski, A., Uzna&nacute;ski, P., Chorowski, J., Stamirowska, Z., &amp; Bartoszkiewicz, M. (2025). <em>The Dragon Hatchling: The Missing Link between the Transformer and Models of the Brain.</em> arXiv:2509.26507. https://arxiv.org/abs/2509.26507</li>
+  <li>Gu, A., &amp; Dao, T. (2023). <em>Mamba: Linear-Time Sequence Modeling with Selective State Spaces.</em> arXiv:2312.00752. https://arxiv.org/abs/2312.00752</li>
+  <li>Orvieto, A., Smith, S. L., Gu, A., Fernando, A., Gulcehre, C., Paszke, A., &hellip; De, S. (2024). <em>Resurrecting Recurrent Neural Networks for Long Sequences.</em> ICML 2024. https://arxiv.org/abs/2303.06349</li>
+  <li>Schlag, I., Irie, K., &amp; Schmidhuber, J. (2021). <em>Linear Transformers Are Secretly Fast Weight Programmers.</em> ICML 2021. https://arxiv.org/abs/2102.11174</li>
+  <li>Ramsauer, H., et al. (2020). <em>Hopfield Networks is All You Need.</em> arXiv:2006.16222. https://arxiv.org/abs/2006.16222</li>
+  <li>Hopfield, J. J. (1982). <em>Neural networks and physical systems with emergent collective computational abilities.</em> PNAS 79(8), 2554&ndash;2558. https://www.pnas.org/doi/10.1073/pnas.79.8.2554</li>
+</ol>
+</div>
+
+<p class="footnote">Drafted with AI assistance (Codebuff) and reviewed, edited, and verified by the author. All claims checked against the cited papers. Blog source: <code>blog/bdh-synaptic-memory-vs-kv-cache.md</code> and <code>blog/bdh-synaptic-memory-vs-kv-cache.html</code> in the project repository (MIT license).</p>
+
+</body>
+</html>
