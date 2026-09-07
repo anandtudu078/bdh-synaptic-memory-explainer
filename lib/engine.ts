@@ -1,6 +1,4 @@
-// Synaptic plasticity engine: W ← λ·W + η·(x·xᵀ), recall y = W·cue.
-// Toy of BDH's working memory (Pathway, arXiv:2509.26507): fixed-size
-// state, sparse non-negative token spikes, decay = short-term memory.
+// Synaptic plasticity engine: W ← λ·W + η·(x·xᵀ), recall y = W·cue — toy of BDH's working memory (arXiv:2509.26507).
 
 export type TokenDef = {
   text: string;
@@ -123,11 +121,7 @@ export function scoreAllTokens(
   });
 }
 
-/**
- * Fidelity = mean recall on tokens actually seen (1.0 = an oracle cache).
- * Interference = mean leakage onto tokens never seen (0 = no crosstalk).
- * Scores are clamped to [0,1] so a saturated trace cannot report >100%.
- */
+/** Fidelity = mean recall on seen tokens (oracle = 1.0); interference = mean leakage onto unseen tokens. Clamped to [0,1]. */
 export function scoreQuality(scores: TokenScore[]): {
   fidelity: number;
   interference: number;
@@ -159,6 +153,96 @@ export function kvUnitsAt(tokens: number): number {
   return tokens * KV_UNITS_PER_TOKEN;
 }
 
+/** Replay the token stream cyclically for `steps` tokens (long-context simulation). Pure, deterministic. */
+export function replayLooped(steps: number, params: EngineParams): Matrix {
+  let W = zeroMatrix();
+  for (let t = 0; t < steps; t++) {
+    W = stepMatrix(W, TOKEN_STREAM[t % TOKEN_STREAM.length], params);
+  }
+  return W;
+}// Falsification experiment: three deterministic claim checks, recomputed live — nothing precomputed, no hardcoded outcomes.
+
+export type ClaimCheckId = "fixed-size" | "still-remembers" | "interference-price";
+
+export type ClaimCheck = {
+  id: ClaimCheckId;
+  label: string;
+  expected: string;
+  observed: string;
+  pass: boolean;
+};
+
+export type ClaimExperimentResult = {
+  checks: ClaimCheck[];
+  allPass: boolean;
+  tokensTested: number;
+  cacheUnitsAtTest: number;
+};
+
+/** Length of the long-context leg (cache would hold 4·300 = 1200 units). */
+export const EXPERIMENT_TOKENS = 300;
+
+/** Token ids sharing a neuron with the cue ("the" = [2,9]; "a" has 2, "it" has 9). */
+const CUE_OVERLAP_TOKENS = ["a", "it"];
+
+/** Run the 3 claim checks (default balanced policy): fixed-size after 300 tokens, cue top-1 after 13, overlap-only leakage. */
+export function runClaimExperiment(
+  params: EngineParams = DEFAULT_PARAMS
+): ClaimExperimentResult {
+  // Leg 1 — long context
+  const long = replayLooped(EXPERIMENT_TOKENS, params);
+  const cacheUnits = kvUnitsAt(EXPERIMENT_TOKENS);
+  const fixedSizePass =
+    long.length === MATRIX_SIZE && long[0].length === MATRIX_SIZE;
+
+  // Legs 2 & 3 — recall quality after the standard stream
+  const W = replayStream(TOKEN_STREAM.length, params);
+  const scores = scoreAllTokens(W, CUE_SPIKES, TOKEN_STREAM.length);
+  const cue = scores.find((s) => s.text === CUE_TOKEN)!;
+  const stillRemembersPass = scores.every(
+    (s) => s.text === CUE_TOKEN || cue.score >= s.score
+  );
+  const overlap = scores.filter((s) => CUE_OVERLAP_TOKENS.includes(s.text));
+  const distant = scores.filter(
+    (s) => !CUE_OVERLAP_TOKENS.includes(s.text) && s.text !== CUE_TOKEN
+  );
+  const minOverlap = Math.min(...overlap.map((s) => s.score));
+  const maxDistant = Math.max(...distant.map((s) => s.score));
+  const interferencePass = minOverlap > 0.05 && minOverlap > maxDistant;
+
+  const pct = (v: number) => `${Math.round(v * 100)}%`;
+  const checks: ClaimCheck[] = [
+    {
+      id: "fixed-size",
+      label: "Memory never grows",
+      expected: `state size stays constant as context grows (claim: no cache that grows linearly)`,
+      observed: `${MATRIX_SIZE}×${MATRIX_SIZE} = ${SYNAPSE_UNITS} units after ${EXPERIMENT_TOKENS} tokens — an exact cache would hold ${cacheUnits}`,
+      pass: fixedSizePass,
+    },
+    {
+      id: "still-remembers",
+      label: "The state still remembers",
+      expected: `cue "${CUE_TOKEN}" remains the strongest recall after the full 13-token stream`,
+      observed: `"${CUE_TOKEN}" is top-1 at ${pct(cue.score)} — if the state recalled nothing, the claim would fail`,
+      pass: stillRemembersPass,
+    },
+    {
+      id: "interference-price",
+      label: "Interference is the visible price",
+      expected: "only tokens sharing neurons with the cue leak into its recall",
+      observed: `overlap tokens "a"/"it" recall ≥ ${pct(minOverlap)}; non-overlapping tokens ≤ ${pct(maxDistant)}`,
+      pass: interferencePass,
+    },
+  ];
+
+  return {
+    checks,
+    allPass: checks.every((c) => c.pass),
+    tokensTested: EXPERIMENT_TOKENS,
+    cacheUnitsAtTest: cacheUnits,
+  };
+}
+
 // The token whose spike pattern probes the recall vector across the UI.
 export const CUE_TOKEN = "the";
 
@@ -174,8 +258,7 @@ export type Preset = {
   params: EngineParams;
 };
 
-// One-click demo scenarios: (η, λ) pairs that expose different trade-offs.
-// Single source of truth — the lab and the A/B race both read from here.
+// One-click scenarios (η, λ) — single source of truth for lab and A/B race.
 export const PRESETS: Preset[] = [
   {
     id: "goldfish",

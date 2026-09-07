@@ -1,7 +1,4 @@
-// The 60-second test: a learner must be able to explain the concept back in
-// their own words. Three from-memory checks (graded against the engine's
-// actual behavior, client-side), then a self-checked explain-it-back box with
-// a revealable model answer. No backend, nothing uploaded.
+// 60-second test: three engine-grounded from-memory checks + a self-checked explain-it-back box. Client-side only.
 
 "use client";
 

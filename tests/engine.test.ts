@@ -1,10 +1,10 @@
-// Smoke tests for the synaptic engine. Run with `npm test`.
-// No framework — the engine is pure, so plain assertions keep this dependency-free.
+// Engine smoke tests (npm test) — framework-free, plain assertions.
 
 import {
-  zeroMatrix, stepMatrix, replayStream, recall, scoreAllTokens, scoreQuality,
-  meanUtilization, paramsMatch, SYNAPSE_UNITS, KV_UNITS_PER_TOKEN, kvUnitsAt,
-  MATRIX_SIZE, TOKEN_STREAM, PRESETS, DEFAULT_PARAMS, CUE_TOKEN, CUE_SPIKES,
+  zeroMatrix, stepMatrix, replayStream, replayLooped, runClaimExperiment, recall,
+  scoreAllTokens, scoreQuality, meanUtilization, paramsMatch, SYNAPSE_UNITS,
+  KV_UNITS_PER_TOKEN, kvUnitsAt, MATRIX_SIZE, TOKEN_STREAM, PRESETS,
+  DEFAULT_PARAMS, CUE_TOKEN, CUE_SPIKES, EXPERIMENT_TOKENS,
 } from "../lib/engine";
 
 let pass = 0, fail = 0;
@@ -118,6 +118,32 @@ check("presets: every η within the slider range [0, 1]",
 check("presets: default params are the 'balanced' preset",
   paramsMatch(DEFAULT_PARAMS, PRESETS.find(p => p.id === "balanced")!.params));
 check("paramsMatch: rejects differing params", !paramsMatch(goldfish, elephant));
+
+// 17. Falsification experiment (the three claim checks)
+const exp = runClaimExperiment();
+check("experiment: 3 checks, all pass on the default policy",
+  exp.allPass && exp.checks.length === 3);
+check("experiment: deterministic across runs",
+  JSON.stringify(runClaimExperiment()) === JSON.stringify(exp));
+check("experiment: 300 tokens tested with correct cache math",
+  exp.tokensTested === EXPERIMENT_TOKENS &&
+  exp.cacheUnitsAtTest === kvUnitsAt(EXPERIMENT_TOKENS));
+check("experiment: fixed-size check passes explicitly",
+  exp.checks.find(c => c.id === "fixed-size")!.pass);
+check("experiment: still-remembers check passes explicitly",
+  exp.checks.find(c => c.id === "still-remembers")!.pass);
+check("experiment: interference check passes explicitly",
+  exp.checks.find(c => c.id === "interference-price")!.pass);
+
+// 18. replayLooped: long-context simulation
+const looped = replayLooped(EXPERIMENT_TOKENS, DEFAULT_PARAMS);
+check("looped: still 24×24 after 300 tokens",
+  looped.length === MATRIX_SIZE && looped[0].length === MATRIX_SIZE);
+check("looped: 0 steps returns a zero matrix",
+  JSON.stringify(replayLooped(0, DEFAULT_PARAMS)) === JSON.stringify(zeroMatrix()));
+check("looped: one full pass matches replayStream",
+  JSON.stringify(replayLooped(TOKEN_STREAM.length, DEFAULT_PARAMS)) ===
+  JSON.stringify(replayStream(TOKEN_STREAM.length, DEFAULT_PARAMS)));
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail > 0 ? 1 : 0);

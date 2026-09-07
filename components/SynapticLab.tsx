@@ -58,9 +58,7 @@ export default function SynapticLab() {
   );
   const utilization = useMemo(() => meanUtilization(matrix), [matrix]);
 
-  // Design standard: "open with a preset already running" — start the stream
-  // on mount, unless the learner prefers reduced motion. Deferred to a rAF
-  // callback so it runs after hydration (no setState-in-effect, no mismatch).
+  // Open with a preset already running; rAF-deferred for hydration + reduced motion.
   useEffect(() => {
     const reduceMotion =
       typeof window !== "undefined" &&

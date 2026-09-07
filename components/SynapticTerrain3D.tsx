@@ -1,6 +1,4 @@
-// Synaptic Terrain 3D: the weight matrix as a living landscape.
-// 576 instanced bars; height & color track synapse weight, green flash
-// marks just-written synapses. Smooth lerp = traces visibly grow/decay.
+// Synaptic Terrain 3D: 576 instanced bars tracking the live matrix; green flash = just-written.
 
 "use client";
 
