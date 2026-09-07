@@ -1,10 +1,11 @@
 import Header from "@/components/Header";
 import SynapticLab from "@/components/SynapticLab";
+import SixtySecondTest from "@/components/SixtySecondTest";
 import BdhModule from "@/components/BdhModule";
 import DocsSection from "@/components/DocsSection";
 
 const CLAIM =
-  "Attention can be reformulated as synaptic memory—where recent token interactions temporarily strengthen local connection weights via Hebbian updates—allowing a fixed-size recurrent state to process sequential context without growing a quadratic Key-Value cache.";
+  "Attention can be reformulated as synaptic memory—where recent token interactions temporarily strengthen local connection weights via Hebbian updates—allowing a fixed-size recurrent state to process sequential context without a Key-Value cache that grows linearly with context length.";
 
 export default function Home() {
   return (
@@ -13,6 +14,8 @@ export default function Home() {
         <Header claim={CLAIM} />
 
         <SynapticLab />
+
+        <SixtySecondTest />
 
         <BdhModule />
 

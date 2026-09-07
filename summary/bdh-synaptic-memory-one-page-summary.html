@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Synaptic Plasticity as Short-Term Memory — One-Page Concept Summary</title>
+<style>
+  :root {
+    --ink: #1a1d23;
+    --muted: #5a6270;
+    --accent: #b45309;
+    --edge: #e2e5ea;
+    --surface: #fafbfc;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: Georgia, "Times New Roman", serif;
+    color: var(--ink);
+    font-size: 8.2pt;
+    line-height: 1.32;
+  }
+  .page { max-width: 184mm; margin: 0 auto; padding: 2mm 0; }
+  h1 { font-size: 14pt; line-height: 1.2; margin: 0 0 2pt 0; }
+  .meta { color: var(--muted); font-size: 8pt; margin: 0 0 7pt 0; }
+  h2 {
+    font-size: 9.4pt; margin: 6pt 0 2.5pt 0; padding-bottom: 1.5pt;
+    border-bottom: 1px solid var(--edge); page-break-after: avoid;
+  }
+  h2 .tag { color: var(--accent); font-size: 8pt; }
+  p { margin: 0 0 4pt 0; }
+  .claim {
+    background: var(--surface); border: 1px solid var(--edge);
+    border-left: 3px solid var(--accent);
+    padding: 5pt 8pt; margin: 0 0 6pt 0;
+  }
+  .claim p { margin: 0; }
+  code {
+    font-family: Consolas, "SF Mono", monospace; font-size: 8.2pt;
+    background: var(--surface); border: 1px solid var(--edge);
+    border-radius: 3px; padding: 0 2px; white-space: nowrap;
+  }
+  table { border-collapse: collapse; width: 100%; margin: 3pt 0 5pt 0; font-size: 7.4pt; line-height: 1.28; }
+  th, td { border: 1px solid var(--edge); padding: 2.5pt 4pt; text-align: left; vertical-align: top; }
+  th { background: var(--surface); font-size: 7.4pt; }
+  table, tr { page-break-inside: avoid; }
+  .refs { font-size: 7.6pt; margin: 0; padding-left: 13pt; }
+  .refs li { margin-bottom: 1.5pt; }
+  .ev { font-family: Consolas, monospace; font-size: 7.2pt; color: var(--muted); white-space: nowrap; }
+  .footnote {
+    border-top: 1px solid var(--edge); margin-top: 7pt; padding-top: 4pt;
+    color: var(--muted); font-size: 7.4pt;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  @page { size: A4 portrait; margin: 10mm 12mm; }
+  @media print {
+    .page { max-width: none; padding: 0; }
+    a { color: inherit; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+<h1>Synaptic Plasticity as Short-Term Memory</h1>
+<p class="meta">
+  One-page concept summary &middot; Anand Tudu &middot; DataForge 2026, Pathway track &middot;
+  Companion artifact: <a href="https://bdh-synaptic-memory-explainer.vercel.app">bdh-synaptic-memory-explainer.vercel.app</a>
+</p>
+
+<div class="claim">
+<p><strong>Central claim (falsifiable).</strong> Attention can be reformulated as synaptic memory &mdash; recent token interactions temporarily strengthen local connection weights through Hebbian updates &mdash; letting a fixed-size recurrent state carry a sequence model&rsquo;s working memory without a KV-cache that grows linearly with context length. The companion artifact reproduces the claim in a 24&times;24 simulation: if overlap-driven recall errors did not grow with sparse co-writes, or if memory use rose with context length, the claim would fail.</p>
+</div>
+
+<h2>The design pressure, and the one-line mechanism <span class="tag">(formal + classical theory)</span></h2>
+<p>Every Transformer pays an inference-time scaling tax: the KV-cache stores each token&rsquo;s keys and values, so memory grows linearly with context while attention compute grows quadratically &mdash; the first wall long documents and multi-hour agents hit. The pivotal formal result is Schlag, Irie &amp; Schmidhuber (2021): linear attention&rsquo;s recurrent state is a <strong>fast-weight program</strong>, where each token performs a rank-1 outer-product write and attention is the read-back. Caching and plasticity are therefore the same computation under different policies &mdash; a KV-cache is &lambda;&nbsp;=&nbsp;1 with verbatim writes; a synaptic state is &lambda;&nbsp;&lt;&nbsp;1 with sparse writes.</p>
+<p>The mechanism is one line: sparse, non-negative activations <code>x</code> (in reported BDH runs roughly 5% of neurons fire, varying with predictability) write <code>W &larr; &lambda;&middot;W + &eta;&middot;(x&middot;x&#7481;)</code> into a fixed matrix; recall is content-addressed, <code>y&nbsp;=&nbsp;W&middot;cue</code>; multiplicative decay makes the state short-term. Three costs follow: <strong>interference</strong> (overlapping patterns corrupt each other&rsquo;s recall), <strong>bounded capacity</strong> (&asymp;0.14&middot;<em>d</em> patterns for outer-product rules; Hopfield, 1982), and <strong>weak order information</strong> &mdash; outer-product traces barely distinguish &ldquo;dog bites man&rdquo; from &ldquo;man bites dog.&rdquo;</p>
+
+<h2>Where the concept lives in BDH and BDH-CQ <span class="tag">(developer-reported)</span></h2>
+<p>In <strong>BDH</strong> (Kosowski et al., 2025) the mechanism <em>is</em> the memory substrate: working memory lives in a fixed synaptic state on a scale-free graph of spiking neurons, attention is reformulated as synaptic memory through Hebbian writes, and the GPU variant <strong>BDH-GPU</strong> is a ReLU low-rank formulation with linear attention that follows Transformer scaling laws. Reported results: BDH rivals GPT-2 on language and translation at 10M&ndash;1B parameters on the same training data, and synapses behave monosemantically &mdash; individual connections strengthen for specific concepts, making state inspectable by construction. No public checkpoint or independent reproduction exists yet.</p>
+<p><strong>BDH-CQ</strong> (Engdahl et al., 2026) extends state-as-memory from session memory to <em>task adaptation</em>: inference-time inputs continuously update recurrent memory, and the answer is produced by iterative computation in latent space &mdash; no verbalized chain of thought, no parameter updates at inference. Its contextual memory has an additive-per-demonstration accumulation rule, exactly the special case the fast-weight/linear-attention view predicts. Reported result: a 150M-parameter configuration reaches 29.5% pass@2 on the public ARC-AGI-1 set at a computed $0.0007 per task, which its authors state breaks the previously reported cost-accuracy Pareto frontier. This is a developer-reported benchmark result, not an external evaluation &mdash; but it is direct evidence that a plastic fixed state can carry adaptation, not merely session memory.</p>
+
+<h2>Competitive context</h2>
+<table>
+  <tr><th>System</th><th>Working memory</th><th>Write rule</th><th>Verbatim recall</th><th>Order info</th><th>Evidence level</th></tr>
+  <tr><td>Transformer + KV-cache</td><td>Grows O(T)</td><td>Append keys/values</td><td>Yes</td><td>Yes (positions)</td><td><span class="ev">standard practice</span></td></tr>
+  <tr><td>Mamba (selective SSM)</td><td>Fixed size</td><td>Gated selective state update</td><td>No</td><td>Yes</td><td><span class="ev">dev-reported, up to B-scale</span></td></tr>
+  <tr><td>LRU / gated linear RNN</td><td>Fixed size</td><td>Gated linear recurrence</td><td>No</td><td>Yes</td><td><span class="ev">peer-reviewed, ICML 2024</span></td></tr>
+  <tr><td>BDH (synaptic)</td><td>Fixed synapse matrix</td><td>Sparse Hebbian write &times; decay</td><td>No</td><td>Weak (naive form)</td><td><span class="ev">dev-reported, 10M&ndash;1B</span></td></tr>
+</table>
+
+<h2>Strengths, losses, and the open question</h2>
+<p><strong>Wins:</strong> constant per-sequence memory (the same state serves token 100 and token 100,000); interpretability by construction &mdash; the synapse matrix <em>is</em> the memory, so state is inspected rather than post-hoc explained; and one computational fabric serving memory, reasoning, and adaptation (BDH-CQ). <strong>Losses:</strong> verbatim recall, order-sensitive reasoning, and exact history &mdash; caching wins these outright, which is why pragmatic stacks are hybrid: cache what must be exact, let the rest decay through plastic state. <strong>The open question is capacity scaling:</strong> whether plastic states can hold long, order-dependent context at frontier scale. BDH&rsquo;s pretraining-scaling experiments beyond 1B parameters are early and developer-reported, and none of the results above has been independently reproduced &mdash; treating them as settled would overclaim.</p>
+
+<h2>Primary sources &amp; where to continue</h2>
+<ol class="refs">
+  <li>Kosowski et al. (2025). <em>The Dragon Hatchling: The Missing Link between the Transformer and Models of the Brain.</em> <a href="https://arxiv.org/abs/2509.26507">arXiv:2509.26507</a> &mdash; introduces BDH; synaptic memory substrate, scaling results. Code: <a href="https://github.com/pathwaycom/bdh">github.com/pathwaycom/bdh</a>.</li>
+  <li>Engdahl et al. (2026). <em>BDH-CQ: In-Context Learning with Recurrent Latent Reasoning.</em> <a href="https://arxiv.org/abs/2608.09888">arXiv:2608.09888</a> &mdash; state-as-memory for task adaptation; ARC-AGI-1 result.</li>
+  <li>Schlag, Irie &amp; Schmidhuber (2021). <em>Linear Transformers Are Secretly Fast Weight Programmers.</em> ICML. <a href="https://arxiv.org/abs/2102.11174">arXiv:2102.11174</a> &mdash; the formal caching&harr;plasticity equivalence.</li>
+  <li>Gu &amp; Dao (2023). <em>Mamba: Linear-Time Sequence Modeling with Selective State Spaces.</em> <a href="https://arxiv.org/abs/2312.00752">arXiv:2312.00752</a> &mdash; fixed-state alternative at scale.</li>
+  <li>Orvieto et al. (2024). <em>Resurrecting RNNs for Long Sequences.</em> ICML. <a href="https://arxiv.org/abs/2303.06349">arXiv:2303.06349</a> &mdash; which ingredients (gating, decay, normalization) close the gap.</li>
+  <li>Hopfield (1982). <em>PNAS 79(8).</em> <a href="https://www.pnas.org/doi/10.1073/pnas.79.8.2554">doi:10.1073/pnas.79.8.2554</a> &mdash; outer-product capacity bound.</li>
+</ol>
+
+<p class="footnote">
+  Prepared with AI assistance (Codebuff) and reviewed by the author; all claims verified against the cited primary sources and labeled by evidence level: <em>formal</em> (proven equivalence), <em>peer-reviewed</em>, <em>developer-reported</em> (no independent reproduction). The companion artifact is a labeled toy of the mechanism, not an official BDH model.
+</p>
+
+</div>
+</body>
+</html>
