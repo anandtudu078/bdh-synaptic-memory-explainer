@@ -52,7 +52,7 @@ const CITATIONS = [
     tag: "SSM",
   },
   {
-    year: "2023",
+    year: "2021",
     ref: "Schlag, I., Irie, K., & Schmidhuber, J. (2021). Linear Transformers Are Secretly Fast Weight Programmers. ICML 2021 — foundational for fast-weight / synaptic views of attention.",
     url: "https://arxiv.org/abs/2102.11174",
     tag: "FAST WEIGHTS",
@@ -133,7 +133,7 @@ export default function DocsSection() {
       <div className="rounded-xl border border-edge bg-surface p-6">
         <div className="flex items-center gap-2 mb-4">
           <BookMarked className="h-5 w-5 text-ok" />
-          <h2 className="text-lg font-semibold">Sources (2020–2026)</h2>
+          <h2 className="text-lg font-semibold">Sources (1982–2025)</h2>
         </div>
         <ol className="space-y-3">
           {CITATIONS.map((c) => (

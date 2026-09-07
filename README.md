@@ -132,6 +132,8 @@ bdh-synaptic-memory-explainer/
 │   ├── Header.tsx        # Title, audience, the one-sentence claim
 │   ├── SynapticLab.tsx   # ⭐ Interactive matrix, sliders, token stream, recall probe
 │   ├── TruthVsEstimate.tsx  # Model memory vs oracle truth + memory budget bars
+│   ├── KvGrowthChart.tsx # Pure-SVG chart: fixed state (O(1)) vs KV-cache (O(T))
+│   ├── SynapticTerrain3D.tsx # Lazy-loaded 3D synaptic terrain (three.js)
 │   ├── BdhModule.tsx     # BDH pillars + Transformer ↔ BDH mapping table
 │   └── DocsSection.tsx   # How-it-works, limitations, citations, PDF export block
 ├── lib/
@@ -189,4 +191,4 @@ Full discussion lives in the app's **Limitations** section.
 
 ## 📄 License
 
-MIT — see [LICENSE](LICENSE) if added.
+MIT — see [LICENSE](LICENSE).
