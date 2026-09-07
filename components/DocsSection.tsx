@@ -186,7 +186,7 @@ export default function DocsSection() {
             <span className="text-foreground">CLAIM.</span> Attention can be reformulated as
             synaptic memory: recent token interactions temporarily strengthen local connection
             weights via Hebbian updates, letting a fixed-size recurrent state process sequential
-            context without a growing quadratic KV-cache.
+            context without a KV-cache that grows linearly with context length.
           </p>
           <p>
             <span className="text-foreground">MECHANISM.</span> W ← λ·W + η·(x·xᵀ). Sparse

@@ -6,12 +6,13 @@ An interactive, single-page educational web app for the **DataForge Pathway trac
 
 > **🔴 Live artifact:** [https://bdh-synaptic-memory-explainer.vercel.app](https://bdh-synaptic-memory-explainer.vercel.app) — opens without sign-in.
 > **📄 Blog post (PDF):** [blog/bdh-synaptic-memory-vs-kv-cache.pdf](blog/bdh-synaptic-memory-vs-kv-cache.pdf) (Markdown + HTML source in [`blog/`](blog/)).
+> **📝 One-page concept summary (PDF):** [summary/bdh-synaptic-memory-one-page-summary.pdf](summary/bdh-synaptic-memory-one-page-summary.pdf) (print-ready HTML source in [`summary/`](summary/)).
 
 ---
 
 ## 🎯 The One-Sentence Claim
 
-> *"Attention can be reformulated as synaptic memory — where recent token interactions temporarily strengthen local connection weights via Hebbian updates — allowing a fixed-size recurrent state to process sequential context without growing a quadratic Key-Value cache."*
+> *"Attention can be reformulated as synaptic memory — where recent token interactions temporarily strengthen local connection weights via Hebbian updates — allowing a fixed-size recurrent state to process sequential context without a Key-Value cache that grows linearly with context length."*
 
 The app is built to let you **test that claim with your own hands**, not just read it.
 
@@ -39,6 +40,8 @@ This claim is grounded in: **Kosowski et al. (2025)**, who introduce BDH and sho
 | 4 | Check **Truth vs Estimate** | Blue = what the fixed state recalls; green marker = what a perfect oracle cache would give. Fidelity & interference scores update live |
 | 5 | Compare **Memory Budget** bars | Synaptic state: constant 576 units. KV-cache: grows forever with every token |
 | 6 | Reset and crank **Plasticity Rate η** to 1.0 | Faster writing, but more crosstalk — the core trade-off |
+| 7 | Take the **60-Second Test** | 3 from-memory checks with instant feedback, then explain the claim back in your own words and compare with a model answer |
+| 8 | Flip **Race mode** | Two (η, λ) memory policies replay the same token stream side by side — watch fidelity and interference diverge |
 
 Every step updates in **sub-second** — the whole simulation runs client-side with zero backend.
 
@@ -87,6 +90,8 @@ Everything in the artifact falls into exactly one of these categories:
 | Hebbian simulation (`lib/engine.ts`) | **Live** | Real-time math on every user input; no backend, no model weights |
 | Synaptic matrix, recall probe, sliders | **Live** | Rendered from simulation state on every tick |
 | Truth-vs-estimate scoring & fidelity/interference metrics | **Live** | Computed per token from the simulation |
+| 60-second self-test | **Live** | Graded client-side against the engine's actual behavior; the learner's explanation never leaves the browser |
+| Race mode (ScenarioCompare) | **Live** | Two (η, λ) policies replay the identical stream; per-side matrix, fidelity and interference from the same engine |
 | Memory-budget bars (O(1) vs O(T)) | **Live** | Derived from current stream length |
 | KV-growth chart | **Animated SVG** | Chart shape is deterministic given stream length; animation is CSS/keyframe-driven, no chart library |
 | 3D synaptic terrain | **Animated, procedural** | three.js mesh generated in code from the live matrix; no external 3D assets; lazy-loaded |
@@ -94,6 +99,7 @@ Everything in the artifact falls into exactly one of these categories:
 | Oracle "truth" values | **Synthetic** | Idealized reference computed from a perfect cache in-engine; not a real trained model |
 | Copy, docs, citations, blog | **Static** | Authored text; no runtime computation |
 | PDF summary & blog PDF | **Precomputed/static** | Generated at authoring time; the in-app 1-page PDF is produced by the browser's print dialog |
+| One-page concept summary (`summary/`) | **Static/Precomputed** | Print-ready HTML source + generated PDF; regenerate with headless Chrome (see Reproducing the Results) |
 
 There are **no pretrained weights, no datasets, and no server-side computation** anywhere in the artifact.
 
@@ -147,6 +153,7 @@ All quantitative behavior in the artifact is reproducible locally:
 1. Run the app (above) — the simulation parameters (λ, η, sparsity, matrix size) are visible in `lib/engine.ts` as named constants.
 2. `npm test` re-runs the engine smoke tests that verify the Hebbian update, decay, and recall math.
 3. To regenerate the blog PDF from source: `blog/bdh-synaptic-memory-vs-kv-cache.html` is print-ready — open it in Chrome and print to PDF (or `chrome --headless --print-to-pdf=blog/bdh-synaptic-memory-vs-kv-cache.pdf blog/bdh-synaptic-memory-vs-kv-cache.html`).
+4. To regenerate the one-page concept summary PDF: `summary/bdh-synaptic-memory-one-page-summary.html` is print-ready A4 — `chrome --headless --print-to-pdf=summary/bdh-synaptic-memory-one-page-summary.pdf summary/bdh-synaptic-memory-one-page-summary.html`.
 
 ### Deploy to Vercel
 
@@ -165,6 +172,8 @@ bdh-synaptic-memory-explainer/
 ├── components/
 │   ├── Header.tsx        # Title, audience, the one-sentence claim
 │   ├── SynapticLab.tsx   # ⭐ Interactive matrix, sliders, token stream, recall probe
+│   ├── ScenarioCompare.tsx  # Race mode: two (η, λ) policies replaying the same stream
+│   ├── SixtySecondTest.tsx  # 60-second self-test: from-memory checks + explain-it-back
 │   ├── TruthVsEstimate.tsx  # Model memory vs oracle truth + memory budget bars
 │   ├── KvGrowthChart.tsx # Pure-SVG chart: fixed state (O(1)) vs KV-cache (O(T))
 │   ├── SynapticTerrain3D.tsx # Lazy-loaded 3D synaptic terrain (three.js)
@@ -178,6 +187,9 @@ bdh-synaptic-memory-explainer/
 │   ├── bdh-synaptic-memory-vs-kv-cache.md    # Blog post source (Markdown)
 │   ├── bdh-synaptic-memory-vs-kv-cache.html  # Print-ready HTML for PDF export
 │   └── bdh-synaptic-memory-vs-kv-cache.pdf   # 📄 The blog as a PDF file
+├── summary/
+│   ├── bdh-synaptic-memory-one-page-summary.html  # One-page concept summary (print-ready source)
+│   └── bdh-synaptic-memory-one-page-summary.pdf   # 📝 The concept summary as a PDF file
 └── package.json
 ```
 
@@ -207,7 +219,7 @@ Full discussion lives in the app's **Limitations** section.
 - [x] Live KV-growth chart (O(T) vs O(1))
 - [x] One-click 1-page PDF export
 - [x] 3D synaptic terrain view (lazy-loaded three.js)
-- [ ] Side-by-side scenario comparison mode
+- [x] Side-by-side scenario comparison mode (shipped as Race mode)
 - [ ] Optional: BDH-style spiking threshold dynamics
 
 ---

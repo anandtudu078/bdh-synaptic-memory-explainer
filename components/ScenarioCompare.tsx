@@ -6,7 +6,6 @@
 import { useMemo, useState } from "react";
 import { Play, Pause, RotateCcw, Swords } from "lucide-react";
 import {
-  MATRIX_SIZE,
   TOKEN_STREAM,
   replayStream,
   scoreAllTokens,

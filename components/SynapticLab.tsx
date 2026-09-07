@@ -58,6 +58,18 @@ export default function SynapticLab() {
   );
   const utilization = useMemo(() => meanUtilization(matrix), [matrix]);
 
+  // Design standard: "open with a preset already running" — start the stream
+  // on mount, unless the learner prefers reduced motion. Deferred to a rAF
+  // callback so it runs after hydration (no setState-in-effect, no mismatch).
+  useEffect(() => {
+    const reduceMotion =
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (reduceMotion) return;
+    const raf = requestAnimationFrame(() => setPlaying(true));
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
   // playback loop
   useEffect(() => {
     if (!playing) {
